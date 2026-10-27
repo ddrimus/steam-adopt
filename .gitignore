@@ -1,0 +1,15 @@
+# Build output from make build
+bin/
+
+# Release archives from make release
+release/
+
+# Environment files
+.env
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Test reports
+coverage.out
