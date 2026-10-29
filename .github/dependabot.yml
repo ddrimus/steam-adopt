@@ -1,0 +1,16 @@
+# Weekly updates, one grouped PR, commits prefixed chore(deps) so release notes file them under Other changes
+version: 2
+updates:
+  # Actions are pinned by SHA, the version comment next to each pin is updated with it
+  # The Go module has no dependencies, so actions are the only thing to keep up to date
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"

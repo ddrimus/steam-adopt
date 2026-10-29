@@ -1,0 +1,98 @@
+name: "Go: Test Suite"
+# Run on every PR and on main, plus manual dispatch
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# No default permissions, each job sets its own
+permissions: {}
+
+# Cancel a superseded run on the same ref
+concurrency:
+  group: go-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Lint with Staticcheck & Run Tests with Go Test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # Shallow, credential-less checkout; nothing here needs git history or push access
+      - name: Checkout repository source code (read-only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Same Go version as go.mod, so a local build gives the same result
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.mod
+
+      # gofmt, go vet and staticcheck, the same check as make lint
+      - name: Lint with gofmt, go vet and staticcheck
+        run: |
+          set -euo pipefail
+          make lint
+
+      # Every released system's build and tests compile, checked here without a runner for each
+      - name: Vet every released system with go vet
+        run: |
+          set -euo pipefail
+          make cross
+
+      # Temporary folders, a fake Steam and a stand-in store, no real Steam install needed
+      - name: Run tests with the race detector
+        run: |
+          set -euo pipefail
+          make test
+
+      # Known vulnerabilities in the code and the Go standard library it uses
+      - name: Check for known vulnerabilities with govulncheck
+        run: |
+          set -euo pipefail
+          make vuln
+
+  test-other-systems:
+    name: Run Tests with Go Test on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-15
+          - windows-2025
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      # Shallow, credential-less checkout; nothing here needs git history or push access
+      - name: Checkout repository source code (read-only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Same Go version as go.mod, so a local build gives the same result
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.mod
+
+      # Steam control, the lock and paths differ per system, so the whole suite runs on each
+      - name: Run tests on this system
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test ./...
